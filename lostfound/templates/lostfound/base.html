@@ -1,0 +1,83 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FPM Lost{% endblock title %}</title>
+    
+    <link rel="icon" type="image/png" href="{% static 'favicon-96x96.png' %}" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}" />
+    <link rel="shortcut icon" href="{% static 'favicon.ico' %}" />
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}" />
+    <link rel="manifest" href="{% static 'site.webmanifest' %}" />
+
+	<meta
+		name="theme-color"
+		content="rgb(229, 229, 229)"
+		media="(prefers-color-scheme: light)" />
+	<meta
+		name="theme-color"
+		content="rgb(23, 23, 23)"
+		media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark">
+
+    {% block head %}{% endblock head %}
+
+    <link rel="stylesheet" href="{% static 'lostfound/base.css' %}">
+</head>
+<body>
+    {% if messages %}
+    <div id="messages">
+        {% for message in messages %}
+        <a class="no-link toast hstack center-align gap" href="{% url 'lostfound:achievements' %}" style="--i: {{ forloop.counter0 }}">
+            <img src="{% url 'lostfound:achievement_badge' message.extra_tags %}">
+            <div class="vstack stretch-self">
+                <span class="tagline accent-text">Errungenschaft freigeschaltet</span>
+                <h4>{{ message }}</h4>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check preview-icon"><path d="M20 6 9 17l-5-5"/></svg>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% block body %}{% endblock body %}
+
+    <dialog id="image-modal" closedby="any">
+        <img src="">
+    </dialog>
+
+    <script>
+        const body = document.body
+        body.dataset.colorScheme = localStorage.getItem('theme') ?? 'auto'
+        function toggleColorScheme() {
+            const NEXT = {
+                light: 'dark',
+                dark: 'auto',
+                auto: 'light',
+            }
+             
+            body.dataset.colorScheme = NEXT[body.dataset.colorScheme] ?? 'auto'
+            localStorage.setItem('theme', body.dataset.colorScheme)
+        }
+
+        const dialog = document.getElementById('image-modal')
+        function showModal(ev) {
+            const img = ev.target
+            dialog.querySelector('img').src = img.src
+            dialog.showModal()
+        }
+
+        dialog.addEventListener('click', ev => {
+            if (ev.target == dialog) {
+                dialog.close()
+            }
+        })
+
+        document.querySelectorAll('img.modal').forEach(e => {
+            e.addEventListener('click', showModal)
+        })
+    </script>
+</body>
+</html>

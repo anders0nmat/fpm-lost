@@ -1,0 +1,87 @@
+{% extends 'lostfound/base.html' %}
+
+{% block body %}
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none">
+    <symbol id="eye-dashed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13.054 18.946a11 11 0 0 1-2.11 0"/>
+        <path d="M13.054 5.054a11 11 0 0 0-2.11-.001"/>
+        <path d="M17.072 6.274a11 11 0 0 1 1.753 1.173"/>
+        <path d="M18.825 16.552a11 11 0 0 1-1.753 1.174"/>
+        <path d="M2.514 13.303a11 11 0 0 1-.452-.954 1 1 0 0 1 0-.697 11 11 0 0 1 .45-.955"/>
+        <path d="M21.485 10.697a11 11 0 0 1 .453.955 1 1 0 0 1 0 .697 11 11 0 0 1-.453.954"/>
+        <path d="M5.173 7.448a11 11 0 0 1 1.753-1.174"/>
+        <path d="M6.926 17.726a11 11 0 0 1-1.753-1.174"/>
+        <circle cx="12" cy="12" r="3"/>
+    </symbol>
+</svg>
+<header class="hstack gap">
+    <a href="{% url 'lostfound:tracker_list' %}" class="no-link button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left preview-icon"><path d="m15 18-6-6 6-6"/></svg>
+    </a>
+    <div class="vstack stretch-self">
+        <h1>Errungenschaften</h1>
+        {{ unlocked_achievements.count }} von {{ total_count }} freigeschaltet
+        <progress max="{{ total_count }}" value="{{ unlocked_achievements.count }}"></progress>
+    </div>
+</header>
+<main>
+    <ul role="list" class="vstack">
+        {% for achievement in unlocked_achievements %}
+        <li class="tracker-card hstack gap">
+            <img class="profile-picture modal" src="{{ achievement.badge.url }}">
+            <div class="vstack stretch-self gap-xs">
+                <h4 class="hstack gap-s center-align">
+                    {{ achievement.name }}
+                    {% if not achievement.visible %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="lucide">
+                        <use href="#eye-dashed"/>
+                    </svg>
+                    {% endif %}
+                </h4>
+                <p class="small">{{ achievement.description }}</p>
+
+                <span class="x-small secondary">
+                    {% with achievement.completion_rate as percentage %}
+                    {% if percentage < 10 %}{{ percentage|floatformat:"-1" }}{% else %}{{ percentage|floatformat:"0" }}{% endif %}%
+                    haben diese Errungenschaft
+                    {% endwith %}
+                </span>
+            </div>
+        </li>
+        {% endfor %}
+
+        {% if locked_achievements %}
+        <div class="tagline secondary separator">Ausstehende Errungenschaften</div>
+        {% for achievement in locked_achievements %}
+        <li class="tracker-card hstack gap" locked>
+            <img class="profile-picture" src="{{ achievement.badge.url }}">
+            <div class="vstack stretch-self gap-xs">
+                <h4>{{ achievement.name }}</h4>
+                {% if achievement.description_visible %}
+                <p class="small">{{ achievement.description }}</p>
+                {% endif %}
+                
+                {% if achievement.progress_visible and achievement.progress and achievement.progress is not False %}
+                <span class="small secondary">{{ achievement.progress.0 }} / {{ achievement.progress.1 }}</span>
+                <progress value="{{ achievement.progress.0 }}" max="{{ achievement.progress.1 }}"></progress>
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+        {% endif %}
+
+        {% if hidden_count > 0 %}
+        <div class="tagline secondary separator">Versteckte Errungenschaften</div>
+        <li class="tracker-card hstack gap">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="profile-picture secondary">
+                <use href="#eye-dashed"/>
+            </svg>
+            <div class="vstack stretch-self gap-xs">
+                <h4>{{ hidden_count }} Errungenschaft{{ hidden_count|pluralize:"en" }} verbleibend</h4>
+                <p class="small">Details werden enthüllt, sobald sie freigeschaltet werden</p>
+            </div>
+        </li>
+        {% endif %}
+    </ul>
+</main>
+{% endblock body %}

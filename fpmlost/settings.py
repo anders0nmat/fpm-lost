@@ -20,20 +20,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-4tg+2xv15h**il1yc3@d$0i_w-8(l75%+3j!k9$#ttrr5%!+u7'
+SECRET_KEY = ''
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
 ]
 
+SECURE_REFERRER_POLICY = 'origin-when-cross-origin'
+
 
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'whitenoise',
+    'django.contrib.humanize',
     'lostfound',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -45,7 +50,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'lostfound.middleware.SessionClientMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -71,6 +78,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'fpmlost.wsgi.application'
+ASGI_APPLICATION = 'fpmlost.asgi.application'
+
+WEBPUSH = {
+    "VAPID_PUBLIC_KEY": "",
+    "VAPID_PRIVATE_KEY": "",
+    "VAPID_ADMIN_EMAIL": "",
+}
 
 
 # Database
@@ -108,7 +122,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'de'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Berlin'
 
 USE_I18N = True
 
@@ -119,6 +133,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 
 # Email

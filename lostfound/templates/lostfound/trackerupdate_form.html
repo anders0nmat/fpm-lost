@@ -1,0 +1,152 @@
+{% extends 'lostfound/base.html' %}
+
+{% block body %}
+<header class="profile-header hstack gap">
+    <a href="{% url 'lostfound:tracker_list' %}" class="no-link button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left preview-icon"><path d="m15 18-6-6 6-6"/></svg>
+    </a>
+    <a class="contents no-link" href="{% url 'lostfound:tracker_detail' tracker.tag %}">
+        <img class="profile-picture" src="{{ tracker.thumbnail.url }}">
+        <h1>{{ tracker.name }}</h1>
+    </a>
+</header>
+<main>
+    <form class="vstack gap fancy-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div>
+            <fieldset>
+                <legend>Standort</legend>
+
+                <div class="hstack gap center-align">
+                    <button type="button" class="accent" onclick="getLocation()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin preview-icon"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>    
+                    </button>
+                    <div class="stretch-self">
+                        <div id="geolocation" empty>
+                            <span class="empty">Kein Standort</span>
+                            <label class="content-toggle hstack center-align gap-s stretch-self">
+                                <input type="checkbox">
+                                <div class="content-checked small stretch-self" id="address">
+                                </div>
+                                <div class="content-unchecked small monospace coordinates stretch-self">
+                                </div>
+                                <div class="stretch-self content-unchecked"></div>
+                                <div class="content-toggle-indicator"></div>
+                            </label>
+                        </div>
+
+                        {{ form.location.errors }}
+                    </div>
+                    {% for field in form.hidden_fields %}
+                    {{ field }}
+                    {% endfor %}
+                </div>
+            </fieldset>
+        </div>
+
+        {% for field in form.visible_fields %}
+        {% if field.name != "picture" %}
+        <div>
+            {{ field.as_field_group }}
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        <div>
+            <label for="{{ form.picture.id_for_label }}" class="button accent">
+                <svg id="upload-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-plus preview-icon"><path d="M16 5h6"/><path d="M19 2v6"/><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/><circle cx="9" cy="9" r="2"/></svg>
+                <div id="edit-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pen preview-icon"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>
+                </div>
+                <button type="button" class="accent" id="delete-picture" onclick="deletePicture()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash preview-icon"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+            </label>
+            {{ form.picture }}
+        </div>
+
+        <button type="submit" class="accent">FPM-Mitglied gefunden!</button>
+    </form>
+</main>
+<script>
+    const filesInput = document.getElementById('{{ form.picture.id_for_label }}')
+    const filesLabel = filesInput.closest('div').getElementsByTagName('label')[0]
+    filesInput.addEventListener('change', _ => {
+        filesLabel.querySelectorAll('img').forEach(e => e.remove())
+        const svg = filesLabel.getElementsByTagName('svg')[0]
+        for (const file of filesInput.files) {
+            const img = document.createElement('img')
+            img.src = URL.createObjectURL(file)
+            svg.insertAdjacentElement('beforebegin', img)
+        }
+    })
+
+    function getLocation() {
+        navigator.geolocation.getCurrentPosition(position => {
+            const coords = position.coords
+            const form = document.getElementsByTagName('form')[0]
+
+            form.elements.latitude.value = coords.latitude
+            form.elements.longitude.value = coords.longitude
+            form.elements.altitude.value = coords.altitude
+            form.elements.accuracy.value = coords.accuracy
+            form.elements.altitude_accuracy.value = coords.altitudeAccuracy
+            form.elements.heading.value = coords.heading
+            form.elements.speed.value = coords.speed
+
+            const geolocation = document.getElementById('geolocation')
+            const address = document.getElementById('address')
+            const coord = geolocation.querySelector('.coordinates')
+            
+            const coordSpan = content => {
+                const span = document.createElement('span')
+                span.textContent = content
+                coord.append(span)
+            }
+
+            coordSpan((coords.latitude < 0 ? 'S' : 'N') + Math.abs(coords.latitude))
+            coordSpan((coords.longitude < 0 ? 'W' : 'E') + Math.abs(coords.longitude))
+            coordSpan('±' + (coords.accuracy >= 1000 ? coords.accuracy / 1000 + 'km' : coords.accuracy + 'm'))
+            if (coords.altitude) {
+                coordSpan('H' + coords.altitude + (coords.altitudeAccuracy ? '±' + coords.altitudeAccuracy : '') + 'm')
+            }
+            if (coords.speed) {
+                coordSpan(coords.speed / 3.6 + 'km/h')
+            }
+            if (coords.heading) {
+                coordSpan(coords.heading + '°')
+            }
+
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json&addressdetails=1`, {
+                }).then(res => res.json())
+                .then(res => {
+                    let addr = ''
+                    if (res.class != 'highway' && res.name) {
+                        addr += res.name + '\n'
+                    }
+                    addr += res.address.road
+                    if ('house_number' in res.address) {
+                        addr += ' ' + res.address.house_number
+                    }
+                    addr += ',\n'
+                    addr += res.address.postcode + ' ' + res.address.city
+
+                    address.textContent = addr
+                    address.innerHTML = address.innerHTML.replace('\n', '<br>')
+
+                    geolocation.querySelector('input').checked = true
+                })
+
+
+            geolocation.removeAttribute('empty')
+        })
+    }
+
+    function deletePicture() {
+        const input = document.getElementById('id_picture')
+        input.value = null
+        input.labels[0].querySelector('img').remove()
+    }
+</script>
+{% endblock body %}

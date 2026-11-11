@@ -1,0 +1,69 @@
+{% extends 'lostfound/base.html' %}
+
+{% block head %}
+<meta name="vapid-public-key" content="{{ vapid_public_key }}">
+{% endblock head %}
+
+{% block body %}
+<header class="hstack gap">
+    <a href="{% url 'lostfound:tracker_list' %}" class="no-link button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left preview-icon"><path d="m15 18-6-6 6-6"/></svg>
+    </a>
+    <h1>Einstellungen</h1>
+</header>
+<main>
+    <form method="POST" class="contents fancy-form">
+        {% csrf_token %}
+
+        {% for field in form %}
+            {% if field.name == 'webpush_subscription' %}
+            <div class="vstack gap">
+                <div>
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {{ field.errors }}
+                </div>
+                <button type="button" class="accent" id="notification">Push-Nachrichten aktivieren</button>
+            </div>
+            {% else %}
+            <div>
+                {{ field.as_field_group }}
+            </div>
+            {% endif %}
+        {% endfor %}
+
+        {% for hidden_field in form.hidden_fields %}
+            {{ hidden_fields }}
+        {% endfor %}
+
+        <button type="submit" class="accent">Speichern</button>
+    </form>
+
+    <script>
+        async function registerSW() {
+            await navigator.serviceWorker.register('/sw.js')
+        }
+        registerSW()
+
+        document.getElementById('notification').addEventListener('click', async _ => {
+            const appKey = document.querySelector('meta[name="vapid-public-key"]')?.content
+            if (!appKey) { return }
+            const notificationPermission = await Notification.requestPermission()
+
+            if (notificationPermission != 'granted') { return }
+
+            const registration = await navigator.serviceWorker.ready
+            let activeSubscription = await registration.pushManager.getSubscription()
+            if (!activeSubscription) {
+                activeSubscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: appKey
+                })
+            }
+
+            document.getElementById('id_webpush_subscription').value = JSON.stringify(activeSubscription)
+        })
+    </script>
+</main>
+
+{% endblock body %}
