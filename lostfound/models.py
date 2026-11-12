@@ -146,6 +146,10 @@ class Client(models.Model):
 class TrackerUpdate(models.Model):
     class Meta:
         ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['creator', 'tracker']),
+            models.Index(fields=['-timestamp']),
+        ]
 
     tracker = models.ForeignKey(Tracker, on_delete=models.CASCADE)
     creator = models.ForeignKey(Client, on_delete=models.SET_NULL, null=True)

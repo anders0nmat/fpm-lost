@@ -1,6 +1,7 @@
 
 from .models import Achievement, Client, Tracker
 import logging
+import datetime
 
 import re
 
@@ -52,6 +53,11 @@ def trackerupdate_matches(client: Client, condition: dict[str, Any], **_):
         '__matches': lambda x, a: re.search(a, x) is not None,
         '__range': lambda x, a: a[0] <= x <= a[1],
     }
+    MODIFIERS = {
+        '__minute': lambda x: x.minute,
+        '__hour': lambda x: x.hour,
+        '__day': lambda x: x.day,
+    }
     FIELDS = (
         'latitude',
         'longitude',
@@ -62,12 +68,17 @@ def trackerupdate_matches(client: Client, condition: dict[str, Any], **_):
         'heading',
         'message',
         'picture',
+        'timestamp',
     )
     
     for update in client.trackerupdate_set.all():
         for key, value in condition.items():
-            field = next((field for field in FIELDS if key.casefold().startswith(field)), None)
-            operator = OPERATORS.get(key[len(field):], None)
+            kk = key.casefold()
+            field, kk = next(((field, kk[len(field):]) for field in FIELDS if kk.startswith(field)), (None, kk))
+            modifier, kk = next(((v, kk[len(k):]) for k, v in MODIFIERS.items() if kk.startswith(k)), (lambda x: x, kk))
+            negate = kk.startswith('__not')
+            if negate: kk = kk[len('__not'):]
+            operator = OPERATORS.get(kk, None)
 
             if not field or not operator:
                 # invalid condition
@@ -75,7 +86,10 @@ def trackerupdate_matches(client: Client, condition: dict[str, Any], **_):
                 break
 
             try:
-                if not operator(getattr(update, field), value):
+                fulfilled = operator(modifier(getattr(update, field)), value)
+                if negate:
+                    fulfilled = not fulfilled
+                if not fulfilled:
                     break
             except:
                 logger.info(f'Exception when checking condition. {key=} {value=} field={getattr(update, field)}')
@@ -84,4 +98,51 @@ def trackerupdate_matches(client: Client, condition: dict[str, Any], **_):
             # no break, therefore all conditions succeeded
             return True
     return False
+
+@Achievement.handler
+def trackerupdates_time(client: Client, condition: Any, **_):
+    if not isinstance(condition, dict):
+        return False
+    
+    n = condition.get('count')
+    span = condition.get('duration')
+    mode = condition.get('mode')
+    different = condition.get('unique')
+
+    if not isinstance(n, int) or not isinstance(span, str) or not mode in ('apart', 'within') or not isinstance(different, bool):
+        return False
+    
+    hr, mn, sc, *_ = span.split(':') + ['0', '0', '0']
+    span = datetime.timedelta(hours=int(hr), minutes=int(mn), seconds=int(sc))
+
+    time_tracker = list(client.trackerupdate_set.order_by('timestamp').values_list('timestamp', 'tracker_id'))
+
+    for i, (time, creator) in enumerate(time_tracker):
+        progress = 0
+        tracker_seen = {creator}
+        start_time = time
+        for time2, creator2 in time_tracker[i + 1:]:
+            within_timespan = start_time + span > time2
+            seen = creator2 in tracker_seen
+            valid = not different or not seen
+            if mode == 'within':
+                if not within_timespan:
+                    break # out of timespan
+                if valid:
+                    progress += 1
+                    tracker_seen.add(creator2)
+                    if progress >= n:
+                        return True
+            elif mode == 'apart':
+                if valid and within_timespan:
+                    break
+                if valid:
+                    progress += 1
+                    tracker_seen.add(creator2)
+                    start_time = time2
+                    if progress >= n:
+                        return True
+                
+    return False
+
 
